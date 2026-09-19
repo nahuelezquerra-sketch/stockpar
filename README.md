@@ -50,11 +50,22 @@ El repositorio contiene:
 
 ## Tecnologías propuestas
 
-* Java
-* API REST
-* Base de datos relacional
-* Git y GitHub
-* Trello
+- Python
+- Programación orientada a objetos
+- API REST
+- Base de datos relacional
+- Git y GitHub
+- Trello
+
+  
+ ## Ejecución del prototipo
+
+Para ejecutar la demostración del sistema se necesita Python 3.
+
+Desde la carpeta principal del repositorio:
+
+```bash
+python src/main.py
 
 ## Autor
 
