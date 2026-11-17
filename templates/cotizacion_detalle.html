@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presupuesto | StockPar</title>
+</head>
+<body>
+    <h1>Presupuesto N.º {{ cotizacion.id_cotizacion }}</h1>
+    <a href="{{ url_for('cotizacion.listar') }}">Volver a presupuestos</a>
+
+    {% for mensaje in get_flashed_messages() %}
+        <p role="status">{{ mensaje }}</p>
+    {% endfor %}
+
+    <p>Cliente: {{ cotizacion.cliente_nombre }}</p>
+    <p>Contacto: {{ cotizacion.cliente_contacto or "-" }}</p>
+    <p>Creado por: {{ cotizacion.usuario.nombre }}</p>
+    <p>Fecha UTC: {{ cotizacion.fecha.strftime("%d/%m/%Y %H:%M") }}</p>
+    <p>Estado: {{ cotizacion.estado }}</p>
+    <p>Dólar utilizado: ARS {{ cotizacion.valor_dolar }}</p>
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Repuesto</th>
+                <th>Cantidad</th>
+                <th>Precio unitario ARS</th>
+                <th>Subtotal ARS</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for detalle in cotizacion.detalles %}
+            <tr>
+                <td>{{ detalle.codigo_repuesto }}</td>
+                <td>{{ detalle.nombre_repuesto }}</td>
+                <td>{{ detalle.cantidad }}</td>
+                <td>{{ detalle.precio_unitario }}</td>
+                <td>{{ detalle.subtotal }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>Total: ARS {{ cotizacion.total }}</h2>
+    {% if cotizacion.estado == "BORRADOR" %}
+    <form method="POST"
+          action="{{ url_for('cotizacion.confirmar', id_cotizacion=cotizacion.id_cotizacion) }}">
+        <input type="hidden" name="csrf_token"
+               value="{{ session.get('csrf_token', '') }}">
+
+        <button type="submit">Confirmar venta</button>
+    </form>
+    {% endif %}
+
+        {% if cotizacion.estado == "BORRADOR" %}
+    <form method="POST"
+          action="{{ url_for('cotizacion.cancelar', id_cotizacion=cotizacion.id_cotizacion) }}">
+        <input type="hidden" name="csrf_token"
+               value="{{ session.get('csrf_token', '') }}">
+
+        <button type="submit">Cancelar presupuesto</button>
+    </form>
+    {% endif %}
+</body>
+</html>

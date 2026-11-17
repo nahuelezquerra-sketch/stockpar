@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Repuestos | StockPar</title>
+</head>
+<body>
+    <h1>Repuestos</h1>
+
+    <a href="/">Inicio</a> |
+    <a href="/proveedores">Proveedores</a>
+
+    {% for mensaje in get_flashed_messages() %}
+        <p role="status">{{ mensaje }}</p>
+    {% endfor %}
+
+        {% if current_user.rol == "ADMINISTRADOR" %}
+    <h2>Agregar repuesto</h2>
+
+    {% if proveedores %}
+    <form method="POST" action="{{ url_for('repuesto.listar') }}">
+        <input type="hidden" name="csrf_token"
+               value="{{ session['csrf_token'] }}">
+
+        <p>
+            <label for="codigo">Código:</label>
+            <input id="codigo" name="codigo" maxlength="40" required
+                   value="{{ request.form.get('codigo', '') }}">
+        </p>
+
+        <p>
+            <label for="nombre">Nombre:</label>
+            <input id="nombre" name="nombre" maxlength="120" required
+                   value="{{ request.form.get('nombre', '') }}">
+        </p>
+
+        <p>
+            <label for="marca">Marca:</label>
+            <input id="marca" name="marca" maxlength="80" required
+                   value="{{ request.form.get('marca', '') }}">
+        </p>
+
+        <p>
+            <label for="precio_compra_usd">Costo en USD:</label>
+            <input type="number" id="precio_compra_usd"
+                   name="precio_compra_usd" min="0" step="0.01"
+                   max="9999999999.99" required
+                   value="{{ request.form.get('precio_compra_usd', '') }}">
+        </p>
+
+        <p>
+            <label for="margen_ganancia">Margen de ganancia (%):</label>
+            <input type="number" id="margen_ganancia"
+                   name="margen_ganancia" min="0" step="0.01"
+                   max="99999.99" required
+                   value="{{ request.form.get('margen_ganancia', '') }}">
+        </p>
+
+        <p>
+            <label for="stock_actual">Stock actual:</label>
+            <input type="number" id="stock_actual" name="stock_actual"
+                   min="0" step="1" required
+                   value="{{ request.form.get('stock_actual', '0') }}">
+        </p>
+
+        <p>
+            <label for="stock_minimo">Stock mínimo:</label>
+            <input type="number" id="stock_minimo" name="stock_minimo"
+                   min="0" step="1" required
+                   value="{{ request.form.get('stock_minimo', '0') }}">
+        </p>
+
+        <p>
+            <label for="id_proveedor">Proveedor:</label>
+            <select id="id_proveedor" name="id_proveedor" required>
+                <option value="">Seleccioná un proveedor</option>
+                {% for proveedor in proveedores %}
+                <option value="{{ proveedor.id_proveedor }}"
+                    {% if request.form.get('id_proveedor') == proveedor.id_proveedor|string %}
+                    selected
+                    {% endif %}>
+                    {{ proveedor.nombre }}
+                </option>
+                {% endfor %}
+            </select>
+        </p>
+
+        <button type="submit">Guardar repuesto</button>
+    </form>
+    {% else %}
+        <p>Primero registrá un proveedor.</p>
+    {% endif %}
+
+        {% endif %}
+    <h2>Repuestos registrados</h2>
+        <form method="GET" action="{{ url_for('repuesto.listar') }}">
+        <p>
+            <label for="busqueda">Buscar por código, nombre o marca:</label>
+            <input
+                id="busqueda"
+                name="q"
+                value="{{ request.args.get('q', '') }}"
+            >
+            <button type="submit">Buscar</button>
+            <a href="{{ url_for('repuesto.listar') }}">Ver todos</a>
+        </p>
+    </form>
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Nombre</th>
+                <th>Marca</th>
+                <th>Proveedor</th>
+                <th>Costo USD</th>
+                <th>Precio de venta ARS</th>
+                <th>Margen %</th>
+                <th>Stock</th>
+                <th>Mínimo</th>
+                <th>Estado del stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for repuesto in repuestos %}
+            <tr>
+                <td>{{ repuesto.codigo }}</td>
+                <td>{{ repuesto.nombre }}</td>
+                <td>{{ repuesto.marca }}</td>
+                <td>{{ repuesto.proveedor.nombre }}</td>
+                <td>{{ repuesto.precio_compra_usd }}</td>
+                 <td>
+                    {% if dolar_vigente %}
+                        $ {{ repuesto.calcular_precio_venta(dolar_vigente.valor) }}
+                    {% else %}
+                        Registrá una cotización del dólar
+                    {% endif %}
+                </td>
+                <td>{{ repuesto.margen_ganancia }}</td>
+                <td>{{ repuesto.stock_actual }}</td>
+                <td>{{ repuesto.stock_minimo }}</td>
+                <td>
+                    {% if repuesto.requiere_reposicion() %}
+                        Bajo stock
+                    {% else %}
+                        Suficiente
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="10">No hay repuestos para mostrar.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
