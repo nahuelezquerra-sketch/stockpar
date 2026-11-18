@@ -3,105 +3,244 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
     <title>Presupuestos | StockPar</title>
 </head>
-<body>
-    <h1>Presupuestos</h1>
-    <a href="/">Volver al inicio</a>
 
-    {% for mensaje in get_flashed_messages() %}
-        <p role="status">{{ mensaje }}</p>
-    {% endfor %}
+<body class="bg-light">
 
-    {% if dolar and repuestos %}
-    <h2>Nuevo presupuesto</h2>
-    <p>Dólar utilizado: ARS {{ dolar.valor }} por USD.</p>
-    <p>Dejá en cero los repuestos que no quieras incluir.</p>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container">
+            <a href="/" class="navbar-brand fw-bold">StockPar</a>
 
-    <form method="POST" action="{{ url_for('cotizacion.listar') }}">
-        <input type="hidden" name="csrf_token"
-               value="{{ session['csrf_token'] }}">
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/" class="btn btn-outline-light btn-sm">
+                    Inicio
+                </a>
+                <a href="/repuestos" class="btn btn-outline-light btn-sm">
+                    Repuestos
+                </a>
+                <a href="/dolar" class="btn btn-outline-light btn-sm">
+                    Dólar
+                </a>
+                {% if current_user.rol == "ADMINISTRADOR" %}
+                <a href="/proveedores"
+                   class="btn btn-outline-light btn-sm">
+                    Proveedores
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
 
-        <p>
-            <label for="cliente">Cliente:</label>
-            <input id="cliente" name="cliente_nombre"
-                   maxlength="120" required
-                   value="{{ request.form.get('cliente_nombre', '') }}">
-        </p>
+    <main class="container py-4">
 
-        <p>
-            <label for="contacto">Contacto:</label>
-            <input id="contacto" name="cliente_contacto"
-                   maxlength="120"
-                   value="{{ request.form.get('cliente_contacto', '') }}">
-        </p>
+        <div class="mb-4">
+            <h1 class="h2 mb-1">Presupuestos</h1>
+            <p class="text-secondary mb-0">
+                Prepará cotizaciones y consultá su historial.
+            </p>
+        </div>
 
-        <table border="1" cellpadding="8">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Repuesto</th>
-                    <th>Stock</th>
-                    <th>Precio ARS</th>
-                    <th>Cantidad</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for repuesto in repuestos %}
-                <tr>
-                    <td>{{ repuesto.codigo }}</td>
-                    <td>{{ repuesto.nombre }}</td>
-                    <td>{{ repuesto.stock_actual }}</td>
-                    <td>{{ repuesto.calcular_precio_venta(dolar.valor) }}</td>
-                    <td>
-                        <input type="number"
-                               name="cantidad_{{ repuesto.id_repuesto }}"
-                               aria-label="Cantidad de {{ repuesto.codigo }}"
-                               min="0" max="1000000" step="1"
-                               value="{{ request.form.get('cantidad_' ~ repuesto.id_repuesto, '0') }}">
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        {% for mensaje in get_flashed_messages() %}
+        <div class="alert alert-info" role="status">
+            {{ mensaje }}
+        </div>
+        {% endfor %}
 
-        <p><button type="submit">Guardar presupuesto</button></p>
-    </form>
-    {% else %}
-        <p>Para crear presupuestos necesitás repuestos activos y un dólar registrado.</p>
-    {% endif %}
+        {% if dolar and repuestos %}
+        <section class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
 
-    <h2>Historial de presupuestos</h2>
+                <div class="d-flex flex-wrap justify-content-between
+                            align-items-center gap-2 mb-3">
+                    <h2 class="h5 mb-0">Nuevo presupuesto</h2>
+                    <span class="badge text-bg-primary">
+                        Dólar: ARS {{ dolar.valor }}
+                    </span>
+                </div>
 
-    <table border="1" cellpadding="8">
-        <thead>
-            <tr>
-                <th>Número</th>
-                <th>Cliente</th>
-                <th>Estado</th>
-                <th>Total ARS</th>
-                <th>Detalle</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cotizacion in historial %}
-            <tr>
-                <td>{{ cotizacion.id_cotizacion }}</td>
-                <td>{{ cotizacion.cliente_nombre }}</td>
-                <td>{{ cotizacion.estado }}</td>
-                <td>{{ cotizacion.total }}</td>
-                <td>
-                    <a href="{{ url_for('cotizacion.ver', id_cotizacion=cotizacion.id_cotizacion) }}">
-                        Ver
-                    </a>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5">Todavía no hay presupuestos.</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                <form method="POST"
+                      action="{{ url_for('cotizacion.listar') }}">
+
+                    <input type="hidden"
+                           name="csrf_token"
+                           value="{{ session['csrf_token'] }}">
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label for="cliente" class="form-label">
+                                Cliente
+                            </label>
+                            <input
+                                class="form-control"
+                                id="cliente"
+                                name="cliente_nombre"
+                                maxlength="120"
+                                required
+                                value="{{ request.form.get('cliente_nombre', '') }}"
+                            >
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="contacto" class="form-label">
+                                Contacto
+                            </label>
+                            <input
+                                class="form-control"
+                                id="contacto"
+                                name="cliente_contacto"
+                                maxlength="120"
+                                value="{{ request.form.get('cliente_contacto', '') }}"
+                            >
+                        </div>
+                    </div>
+
+                    <p class="text-secondary small">
+                        Indicá las cantidades. Dejá en cero los repuestos
+                        que no quieras incluir.
+                    </p>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th scope="col">Código</th>
+                                    <th scope="col">Repuesto</th>
+                                    <th scope="col" class="text-end">Stock</th>
+                                    <th scope="col" class="text-end">
+                                        Precio unitario ARS
+                                    </th>
+                                    <th scope="col">Cantidad</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for repuesto in repuestos %}
+                                <tr>
+                                    <td class="fw-semibold text-nowrap">
+                                        {{ repuesto.codigo }}
+                                    </td>
+                                    <td>{{ repuesto.nombre }}</td>
+                                    <td class="text-end">
+                                        {{ repuesto.stock_actual }}
+                                    </td>
+                                    <td class="text-end text-nowrap">
+                                        $ {{ repuesto.calcular_precio_venta(dolar.valor) }}
+                                    </td>
+                                    <td>
+                                        <input
+                                            type="number"
+                                            class="form-control"
+                                            style="min-width: 90px; max-width: 130px;"
+                                            name="cantidad_{{ repuesto.id_repuesto }}"
+                                            aria-label="Cantidad de {{ repuesto.codigo }}"
+                                            min="0"
+                                            max="1000000"
+                                            step="1"
+                                            value="{{ request.form.get('cantidad_' ~ repuesto.id_repuesto, '0') }}"
+                                        >
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">
+                        Guardar presupuesto
+                    </button>
+
+                    <p class="text-secondary small mt-3 mb-0">
+                        El stock se descuenta únicamente al confirmar la venta.
+                    </p>
+                </form>
+            </div>
+        </section>
+
+        {% else %}
+        <div class="alert alert-warning">
+            Para crear presupuestos necesitás repuestos activos
+            y una cotización del dólar registrada.
+        </div>
+        {% endif %}
+
+        <section class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <h2 class="h5 mb-3">Historial de presupuestos</h2>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover
+                                  align-middle mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th scope="col">Número</th>
+                                <th scope="col">Cliente</th>
+                                <th scope="col">Estado</th>
+                                <th scope="col" class="text-end">Total ARS</th>
+                                <th scope="col">Detalle</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for cotizacion in historial %}
+                            <tr>
+                                <td class="fw-semibold">
+                                    #{{ cotizacion.id_cotizacion }}
+                                </td>
+                                <td>{{ cotizacion.cliente_nombre }}</td>
+                                <td>
+                                    {% if cotizacion.estado == "CONFIRMADA" %}
+                                    <span class="badge text-bg-success">
+                                        Confirmada
+                                    </span>
+                                    {% elif cotizacion.estado == "CANCELADA" %}
+                                    <span class="badge text-bg-secondary">
+                                        Cancelada
+                                    </span>
+                                    {% else %}
+                                    <span class="badge text-bg-warning">
+                                        Borrador
+                                    </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="text-end fw-semibold text-nowrap">
+                                    $ {{ cotizacion.total }}
+                                </td>
+
+                                <td>
+                                    <a
+                                        href="{{ url_for('cotizacion.ver', id_cotizacion=cotizacion.id_cotizacion) }}"
+                                        class="btn btn-outline-primary btn-sm"
+                                    >
+                                        Ver detalle
+                                    </a>
+                                </td>
+                            </tr>
+
+                            {% else %}
+                            <tr>
+                                <td colspan="5"
+                                    class="text-center text-secondary py-4">
+                                    Todavía no hay presupuestos.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center text-secondary small mt-4">
+            StockPar · Gestión de repuestos importados
+        </footer>
+
+    </main>
 </body>
 </html>

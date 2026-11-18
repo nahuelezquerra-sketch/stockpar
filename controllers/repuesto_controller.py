@@ -3,6 +3,7 @@ from decimal import Decimal, InvalidOperation
 
 from flask import (
     Blueprint,
+    abort,
     flash,
     redirect,
     render_template,
@@ -10,8 +11,9 @@ from flask import (
     session,
     url_for,
 )
-from sqlalchemy import or_
-from sqlalchemy.exc import IntegrityError
+from flask_login import current_user, login_required
+from sqlalchemy import or_, update
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from models import db
 from models.proveedor import Proveedor
@@ -22,6 +24,7 @@ repuesto_bp = Blueprint("repuesto", __name__)
 
 
 @repuesto_bp.route("/repuestos", methods=["GET", "POST"])
+@login_required
 def listar():
     busqueda = request.args.get("q", "").strip()
 
@@ -29,9 +32,14 @@ def listar():
         session["csrf_token"] = secrets.token_hex(32)
 
     if request.method == "POST":
+        if current_user.rol != "ADMINISTRADOR":
+            abort(403)
+
         token = request.form.get("csrf_token", "")
 
-        if not secrets.compare_digest(token, session["csrf_token"]):
+        if not token or not secrets.compare_digest(
+            token, session["csrf_token"]
+        ):
             return "Formulario vencido. Recargá la página.", 400
 
         try:
@@ -52,7 +60,9 @@ def listar():
                 raise ValueError("Ingresá importes válidos.")
 
             if costo < 0 or margen < 0:
-                raise ValueError("El costo y el margen no pueden ser negativos.")
+                raise ValueError(
+                    "El costo y el margen no pueden ser negativos."
+                )
 
             if costo > Decimal("9999999999.99"):
                 raise ValueError("El costo supera el máximo permitido.")
@@ -70,8 +80,11 @@ def listar():
             minimo = int(request.form.get("stock_minimo", ""))
             id_proveedor = int(request.form.get("id_proveedor", ""))
 
-            if stock < 0 or minimo < 0:
-                raise ValueError("El stock no puede ser negativo.")
+            if not 0 <= stock <= 2147483647:
+                raise ValueError("Ingresá un stock válido.")
+
+            if not 0 <= minimo <= 2147483647:
+                raise ValueError("Ingresá un stock mínimo válido.")
 
             proveedor = db.session.get(Proveedor, id_proveedor)
 
@@ -102,7 +115,13 @@ def listar():
 
         except IntegrityError:
             db.session.rollback()
-            flash("No se pudo guardar. Comprobá que el código no esté repetido.")
+            flash(
+                "No se pudo guardar. Comprobá que el código no esté repetido."
+            )
+
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash("No se pudo guardar el repuesto.")
 
         else:
             flash("Repuesto guardado correctamente.")
@@ -135,4 +154,72 @@ def listar():
         repuestos=repuestos,
         proveedores=proveedores,
         dolar_vigente=dolar_vigente,
+    )
+
+
+@repuesto_bp.route("/repuestos/reposicion", methods=["GET", "POST"])
+@login_required
+def reponer_stock():
+    if current_user.rol != "ADMINISTRADOR":
+        abort(403)
+
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(32)
+
+    if request.method == "POST":
+        token = request.form.get("csrf_token", "")
+
+        if not token or not secrets.compare_digest(
+            token, session["csrf_token"]
+        ):
+            return "Formulario vencido. Recargá la página.", 400
+
+        try:
+            id_repuesto = int(request.form.get("id_repuesto", ""))
+            cantidad = int(request.form.get("cantidad", ""))
+
+            if not 1 <= cantidad <= 1000000:
+                raise ValueError(
+                    "Ingresá una cantidad entre 1 y 1000000."
+                )
+
+            resultado = db.session.execute(
+                update(Repuesto)
+                .where(
+                    Repuesto.id_repuesto == id_repuesto,
+                    Repuesto.activo.is_(True),
+                    Repuesto.stock_actual <= 2147483647 - cantidad,
+                )
+                .values(
+                    stock_actual=Repuesto.stock_actual + cantidad
+                )
+                .execution_options(synchronize_session=False)
+            )
+
+            if resultado.rowcount != 1:
+                raise ValueError(
+                    "El repuesto no está disponible o supera el límite de stock."
+                )
+
+            db.session.commit()
+
+        except ValueError as error:
+            db.session.rollback()
+            flash(str(error))
+
+        except SQLAlchemyError:
+            db.session.rollback()
+            flash("No se pudo registrar la reposición.")
+
+        else:
+            flash("Reposición registrada correctamente.")
+            return redirect(url_for("repuesto.reponer_stock"))
+
+    repuestos = Repuesto.query.filter_by(activo=True).order_by(
+        Repuesto.nombre
+    ).all()
+
+    return render_template(
+        "reposicion.html",
+        repuestos=repuestos,
     )

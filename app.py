@@ -1,7 +1,7 @@
 import secrets
 
 import click
-from flask import Flask, render_template_string
+from flask import Flask, render_template
 from flask_login import LoginManager, current_user, login_required
 
 from models import db
@@ -17,10 +17,22 @@ from controllers.auth_controller import auth_bp
 from models.cotizacion import Cotizacion
 from models.detalle_cotizacion import DetalleCotizacion
 from controllers.cotizacion_controller import cotizacion_bp
+from controllers.api_controller import api_bp
+from pathlib import Path
 
 app = Flask(__name__)
 
-app.config["SECRET_KEY"] = secrets.token_hex(32)
+carpeta_instance = Path(app.instance_path)
+carpeta_instance.mkdir(parents=True, exist_ok=True)
+
+archivo_clave = carpeta_instance / "secret_key.txt"
+
+if not archivo_clave.exists():
+    archivo_clave.write_text(secrets.token_hex(32), encoding="utf-8")
+
+app.config["SECRET_KEY"] = archivo_clave.read_text(
+    encoding="utf-8"
+).strip()
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///stockpar.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -47,6 +59,7 @@ app.register_blueprint(repuesto_bp)
 app.register_blueprint(dolar_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(cotizacion_bp)
+app.register_blueprint(api_bp)
 
 
 with app.app_context():
@@ -80,24 +93,7 @@ def proteger_pantallas():
 @app.route("/")
 @login_required
 def inicio():
-    return render_template_string("""
-        <h1>StockPar</h1>
-        <p>Bienvenido, {{ current_user.nombre }}</p>
-        <p>Rol: {{ current_user.rol }}</p>
-
-                {% if current_user.rol == "ADMINISTRADOR" %}
-            <p><a href="/proveedores">Ver proveedores</a></p>
-        {% endif %}
-        <p><a href="/repuestos">Ver repuestos</a></p>
-        <p><a href="/dolar">Cotización del dólar</a></p>
-        <p><a href="/cotizaciones">Presupuestos</a></p>
-
-        <form method="POST" action="{{ url_for('auth.logout') }}">
-            <input type="hidden" name="csrf_token"
-                   value="{{ session.get('csrf_token', '') }}">
-            <button type="submit">Cerrar sesión</button>
-        </form>
-    """)
+    return render_template("inicio.html")
 
 
 @app.cli.command("crear-usuario")
